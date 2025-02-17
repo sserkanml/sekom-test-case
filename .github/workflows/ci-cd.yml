@@ -23,6 +23,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=sserkanml_sekom-test-case
+            -Dsonar.organization=sserkanml
+            -Dsonar.sources=todo-app/src
 
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/node@master
