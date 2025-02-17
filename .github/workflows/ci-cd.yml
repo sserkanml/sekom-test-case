@@ -45,9 +45,8 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high
           command: test
-          working-directory: ./todo-app
+          args: --file=todo-app/requirements.txt --package-manager=pip --severity-threshold=high
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
