@@ -199,11 +199,11 @@ jobs:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          sed -i "s|\${ECR_REPOSITORY}|${ECR_REGISTRY}/${ECR_REPOSITORY}|g" todo-app/helm/todo-app/values.yaml
+          sed -i "s|\${ECR_REPOSITORY}|${ECR_REGISTRY}/${ECR_REPOSITORY}|g" helm/todo-app/values.yaml
           
           echo "Deploying to EC2 host: ${EC2_HOST}"
           
-          scp -o StrictHostKeyChecking=no -r todo-app/helm ubuntu@${EC2_HOST}:~/
+          scp -o StrictHostKeyChecking=no -r helm ubuntu@${EC2_HOST}:~/
           
           ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
             export KUBECONFIG=/home/ubuntu/.kube/config
