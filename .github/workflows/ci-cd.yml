@@ -75,7 +75,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Scan Docker image and filesystem for vulnerabilities
         uses: aquasecurity/trivy-action@master
@@ -180,6 +180,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Install Helm
         uses: azure/setup-helm@v3
         with:
@@ -191,12 +195,17 @@ jobs:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
       - name: Deploy to EC2 Minikube
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          sed -i "s|\${ECR_REPOSITORY}|${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}|g" helm/todo-app/values.yaml
+          sed -i "s|\${ECR_REPOSITORY}|${ECR_REGISTRY}/${ECR_REPOSITORY}|g" todo-app/helm/todo-app/values.yaml
           
-          scp -o StrictHostKeyChecking=no -r helm ubuntu@${{ secrets.EC2_HOST }}:~/
+          echo "Deploying to EC2 host: ${EC2_HOST}"
           
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} '
+          scp -o StrictHostKeyChecking=no -r todo-app/helm ubuntu@${EC2_HOST}:~/
+          
+          ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
             export KUBECONFIG=/home/ubuntu/.kube/config
             
             helm upgrade --install todo-app ~/helm/todo-app \
