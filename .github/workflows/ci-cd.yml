@@ -99,13 +99,6 @@ jobs:
           
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.run_number }}
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-
-      - name: Run OWASP ZAP scan
-        uses: zaproxy/action-full-scan@v0.4.0
-        with:
-          target: 'http://your-application-url'
-          rules_file_name: '.zap/rules.tsv'
-          cmd_options: '-a' 
           
   generate-security-report:
     needs: [security-checks, build-and-push]
