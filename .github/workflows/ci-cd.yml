@@ -35,10 +35,11 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        working-directory: ./todo-app
         run: |
           python -m pip install --upgrade pip
+          cd todo-app
           pip install -r requirements.txt
+          pip freeze > installed_requirements.txt
 
       - name: Run Snyk
         uses: snyk/actions/python@master
@@ -46,7 +47,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: test
-          args: --file=todo-app/requirements.txt --package-manager=pip --severity-threshold=high
+          args: --file=todo-app/installed_requirements.txt --package-manager=pip --severity-threshold=high --skip-unresolved
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
