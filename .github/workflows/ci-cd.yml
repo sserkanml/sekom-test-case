@@ -201,26 +201,27 @@ jobs:
           scp -o StrictHostKeyChecking=no k8s/deployment.yaml ubuntu@${EC2_HOST}:~/deployment.yaml
           
           ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} "
-            # AWS credentials'ı ayarla
+            # AWS credentials ayarla
             aws configure set aws_access_key_id ${AWS_ACCESS_KEY}
             aws configure set aws_secret_access_key ${AWS_SECRET_KEY}
             aws configure set region ${AWS_REGION}
             
-            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+            TOKEN=\$(aws ecr get-login-password --region ${AWS_REGION})
             
-            kubectl create namespace todo-app --dry-run=client -o yaml | kubectl apply -f -
+            mkdir -p ~/.docker
+            echo '{\"auths\": {\"${ECR_REGISTRY}\": {\"auth\": \"'\$(echo -n AWS:\$TOKEN | base64)'\"}}}' > ~/.docker/config.json
             
-            kubectl create secret docker-registry regcred \
-              --docker-server=${ECR_REGISTRY} \
-              --docker-username=AWS \
-              --docker-password=\$(aws ecr get-login-password --region ${AWS_REGION}) \
-              --namespace todo-app
+            kubectl delete secret regcred -n todo-app --ignore-not-found
+            kubectl create secret generic regcred \
+              --from-file=.dockerconfigjson=/home/ubuntu/.docker/config.json \
+              --type=kubernetes.io/dockerconfigjson \
+              -n todo-app
             
             kubectl apply -f ~/deployment.yaml
             
             kubectl set image deployment/todo-app todo-app=${ECR_REGISTRY}/${ECR_REPOSITORY}:latest -n todo-app
             
-            kubectl rollout status deployment/todo-app -n todo-app --timeout=60s
+            kubectl rollout status deployment/todo-app -n todo-app --timeout=90s
             
             kubectl get pods -n todo-app
           "
