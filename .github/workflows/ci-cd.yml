@@ -82,15 +82,9 @@ jobs:
         with:
           scan-type: 'config'
           scan-ref: 'todo-app/Dockerfile'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
-          category: 'trivy-results'
+          format: 'table'
+          output: 'trivy-results.txt'
+          severity: 'CRITICAL,HIGH'
 
       - name: Build, tag, and push image to Amazon ECR
         env:
@@ -122,7 +116,7 @@ jobs:
           echo "# Security Scan Results" > security-report.md
           echo "## Scan Date: $(date)" >> security-report.md
           echo "### Trivy Scan Results" >> security-report.md
-          cat trivy-results.sarif >> security-report.md
+          cat trivy-results.txt >> security-report.md
           echo "### OWASP ZAP Scan Results" >> security-report.md
           cat zap-scan.html >> security-report.md
 
@@ -131,3 +125,9 @@ jobs:
         with:
           name: security-report
           path: security-report.md
+
+      - name: Archive Trivy results
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-results
+          path: trivy-results.txt
