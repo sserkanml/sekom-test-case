@@ -12,30 +12,102 @@ env:
   ECR_REPOSITORY: todo-app
 
 jobs:
-  build-and-push:
+  security-checks:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Run SAST with SonarCloud
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
 
-    - name: Build, tag, and push image to Amazon ECR
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-      run: |
-        cd todo-app
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.run_number }} .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.run_number }} $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.run_number }}
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest 
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+  build-and-push:
+    needs: security-checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Scan Docker image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'todo-app/Dockerfile'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          cd todo-app
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.run_number }} .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.run_number }} $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          
+          # Scan built image
+          trivy image $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.run_number }}
+          
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.run_number }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Run OWASP ZAP scan
+        uses: zaproxy/action-full-scan@v0.4.0
+        with:
+          target: 'http://your-application-url'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a' 
+          
+  generate-security-report:
+    needs: [security-checks, build-and-push]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Security Report
+        run: |
+          echo "# Security Scan Results" > security-report.md
+          echo "## Scan Date: $(date)" >> security-report.md
+          echo "### Trivy Scan Results" >> security-report.md
+          cat trivy-results.sarif >> security-report.md
+          echo "### OWASP ZAP Scan Results" >> security-report.md
+          cat zap-scan.html >> security-report.md
+
+      - name: Upload Security Report
+        uses: actions/upload-artifact@v2
+        with:
+          name: security-report
+          path: security-report.md
