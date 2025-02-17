@@ -77,14 +77,23 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Scan Docker image for vulnerabilities
+      - name: Scan Docker image and filesystem for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'  
+          scan-ref: '.'
+          format: 'table'
+          output: 'trivy-fs-results.txt'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          
+      - name: Scan Dockerfile
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'config'
           scan-ref: 'todo-app/Dockerfile'
           format: 'table'
-          output: 'trivy-results.txt'
-          severity: 'CRITICAL,HIGH'
+          output: 'trivy-dockerfile-results.txt'
+          severity: 'CRITICAL,HIGH,MEDIUM'
 
       - name: Build, tag, and push image to Amazon ECR
         env:
@@ -105,23 +114,61 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create Security Report
-        if: always()  
+        if: always()
         run: |
           echo "# Security Scan Results" > security-report.md
           echo "## Scan Date: $(date)" >> security-report.md
-          echo "### Trivy Scan Results" >> security-report.md
-          if [ -f trivy-results.txt ]; then
-            cat trivy-results.txt >> security-report.md
+          
+          echo "## SonarCloud Results" >> security-report.md
+          echo "For SonarCloud results, visit: https://sonarcloud.io/project/overview?id=sserkanml_sekom-test-case" >> security-report.md
+          
+          echo "## Snyk Vulnerability Results" >> security-report.md
+          echo "Snyk scan results:" >> security-report.md
+          
+          echo "## Trivy Filesystem Scan Results" >> security-report.md
+          if [ -f trivy-fs-results.txt ]; then
+            cat trivy-fs-results.txt >> security-report.md
           else
-            echo "No Trivy results found" >> security-report.md
+            echo "No filesystem scan results found" >> security-report.md
+          fi
+          
+          echo "## Trivy Dockerfile Scan Results" >> security-report.md
+          if [ -f trivy-dockerfile-results.txt ]; then
+            cat trivy-dockerfile-results.txt >> security-report.md
+          else
+            echo "No Dockerfile scan results found" >> security-report.md
           fi
 
-      - name: Archive Security Report
-        if: always()  
+      - name: Create Security Report Summary
+        if: always()
+        run: |
+          echo "## Security Scan Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### Scan Date: $(date)" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### SonarCloud Results" >> $GITHUB_STEP_SUMMARY
+          echo "Detaylı sonuçlar için: https://sonarcloud.io/project/overview?id=sserkanml_sekom-test-case" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Trivy Filesystem Scan Results" >> $GITHUB_STEP_SUMMARY
+          if [ -f trivy-fs-results.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat trivy-fs-results.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "### Trivy Dockerfile Scan Results" >> $GITHUB_STEP_SUMMARY
+          if [ -f trivy-dockerfile-results.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat trivy-dockerfile-results.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Archive Security Reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: security-reports
           path: |
             security-report.md
-            trivy-results.txt
+            trivy-fs-results.txt
+            trivy-dockerfile-results.txt
           retention-days: 90
