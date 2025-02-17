@@ -212,7 +212,7 @@ jobs:
             
             kubectl apply -f ~/deployment.yaml
             
-            kubectl set image deployment/todo-app todo-app=${ECR_REGISTRY}/${ECR_REPOSITORY}:${{ github.sha }} -n todo-app
+            kubectl set image deployment/todo-app todo-app=${ECR_REGISTRY}/${ECR_REPOSITORY}:latest -n todo-app
             
             kubectl rollout status deployment/todo-app -n todo-app
           "
