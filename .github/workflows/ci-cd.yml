@@ -142,24 +142,27 @@ jobs:
       - name: Create Security Report Summary
         if: always()
         run: |
-          echo "## Security Scan Results Summary" >> $GITHUB_STEP_SUMMARY
-          echo "### Scan Date: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "# Security Scan Results" > security-report.md
+          echo "## Scan Date: $(date)" >> security-report.md
           
-          echo "### SonarCloud Results" >> $GITHUB_STEP_SUMMARY
-          echo "Detaylı sonuçlar için: https://sonarcloud.io/project/overview?id=sserkanml_sekom-test-case" >> $GITHUB_STEP_SUMMARY
+          echo "## SonarCloud Results" >> security-report.md
+          echo "For SonarCloud results, visit: https://sonarcloud.io/project/overview?id=sserkanml_sekom-test-case" >> security-report.md
           
-          echo "### Trivy Filesystem Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "## Snyk Vulnerability Results" >> security-report.md
+          echo "Snyk scan results:" >> security-report.md
+          
+          echo "## Trivy Filesystem Scan Results" >> security-report.md
           if [ -f trivy-fs-results.txt ]; then
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat trivy-fs-results.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat trivy-fs-results.txt >> security-report.md
+          else
+            echo "No filesystem scan results found" >> security-report.md
           fi
           
-          echo "### Trivy Dockerfile Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "## Trivy Dockerfile Scan Results" >> security-report.md
           if [ -f trivy-dockerfile-results.txt ]; then
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat trivy-dockerfile-results.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat trivy-dockerfile-results.txt >> security-report.md
+          else
+            echo "No Dockerfile scan results found" >> security-report.md
           fi
 
       - name: Archive Security Reports
