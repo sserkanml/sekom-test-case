@@ -165,3 +165,42 @@ jobs:
           name: security-report
           path: security-report.md
           retention-days: 90
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.12.0
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Deploy to EC2 Minikube
+        run: |
+          sed -i "s|\${ECR_REPOSITORY}|${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}|g" helm/todo-app/values.yaml
+          
+          scp -o StrictHostKeyChecking=no -r helm ubuntu@${{ secrets.EC2_HOST }}:~/
+          
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} '
+            export KUBECONFIG=/home/ubuntu/.kube/config
+            
+            helm upgrade --install todo-app ~/helm/todo-app \
+              --set todoApp.image.tag=${{ github.sha }} \
+              --namespace todo-app \
+              --create-namespace
+          '

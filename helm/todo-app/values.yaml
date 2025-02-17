@@ -1,0 +1,9 @@
+todoApp:
+  image:
+    repository: ${ECR_REPOSITORY}
+    tag: latest
+  port: 5000
+  env:
+    FLASK_APP: app.py
+    FLASK_ENV: production
+    MONGO_URI: "mongodb://mongodb.todo-app.svc.cluster.local:27017" 

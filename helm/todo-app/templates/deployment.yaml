@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-app
+spec:
+  selector:
+    matchLabels:
+      app: todo-app
+  template:
+    metadata:
+      labels:
+        app: todo-app
+    spec:
+      containers:
+      - name: todo-app
+        image: "{{ .Values.todoApp.image.repository }}:{{ .Values.todoApp.image.tag }}"
+        ports:
+        - containerPort: {{ .Values.todoApp.port }}
+        env:
+        - name: FLASK_APP
+          value: {{ .Values.todoApp.env.FLASK_APP }}
+        - name: FLASK_ENV
+          value: {{ .Values.todoApp.env.FLASK_ENV }}
+        - name: MONGO_URI
+          value: {{ .Values.todoApp.env.MONGO_URI }} 
