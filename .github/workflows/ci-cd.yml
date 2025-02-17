@@ -105,23 +105,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create Security Report
+        if: always()  
         run: |
           echo "# Security Scan Results" > security-report.md
           echo "## Scan Date: $(date)" >> security-report.md
           echo "### Trivy Scan Results" >> security-report.md
-          cat trivy-results.txt >> security-report.md
-          echo "### OWASP ZAP Scan Results" >> security-report.md
-          cat zap-scan.html >> security-report.md
+          if [ -f trivy-results.txt ]; then
+            cat trivy-results.txt >> security-report.md
+          else
+            echo "No Trivy results found" >> security-report.md
+          fi
 
-      - name: Upload Security Report
+      - name: Archive Security Report
+        if: always()  
         uses: actions/upload-artifact@v4
         with:
-          name: security-report
-          path: security-report.md
-
-      - name: Archive Trivy results
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-results
-          path: trivy-results.txt
+          name: security-reports
+          path: |
+            security-report.md
+            trivy-results.txt
           retention-days: 90
