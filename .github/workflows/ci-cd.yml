@@ -114,7 +114,7 @@ jobs:
           cat zap-scan.html >> security-report.md
 
       - name: Upload Security Report
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: security-report
           path: security-report.md
