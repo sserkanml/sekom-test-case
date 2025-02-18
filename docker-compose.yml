@@ -5,8 +5,7 @@ services:
     image: ${ECR_REGISTRY}/todo-app:${IMAGE_TAG:-latest}
     command: >
       flask run --host=0.0.0.0
-    volumes:
-      - .:/app
+    
     ports:
       - "80:5000"
     environment:
