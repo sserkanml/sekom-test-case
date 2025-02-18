@@ -108,7 +108,7 @@ input[type="date"]::-webkit-inner-spin-button {
 
 /* Always display the drop down caret */
 input[type="date"]::-webkit-calendar-picker-indicator {
-    color: #2c3e50;
+    color: #bce460;
 }
 
 /* A few custom styles for date inputs */
