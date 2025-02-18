@@ -205,10 +205,14 @@ jobs:
             
             export ECR_REGISTRY=${ECR_REGISTRY}
             export IMAGE_TAG=latest
+
+            docker image prune -f
+
+            docker pull ${ECR_REGISTRY}/todo-app:latest
             
             docker compose down
             
-            docker compose up -d
+            docker compose up -d --force-recreate
 
             docker compose ps
             
