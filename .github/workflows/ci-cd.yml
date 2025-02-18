@@ -189,39 +189,28 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Deploy to EC2 Minikube
+      - name: Deploy to EC2
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          sed -i "s|\${ECR_REGISTRY}|${ECR_REGISTRY}|g" k8s/deployment.yaml
-          
-          scp -o StrictHostKeyChecking=no k8s/deployment.yaml ubuntu@${EC2_HOST}:~/deployment.yaml
+          scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${EC2_HOST}:~/docker-compose.yml
           
           ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} "
-            # AWS credentials ayarla
             aws configure set aws_access_key_id ${AWS_ACCESS_KEY}
             aws configure set aws_secret_access_key ${AWS_SECRET_KEY}
             aws configure set region ${AWS_REGION}
             
-            TOKEN=\$(aws ecr get-login-password --region ${AWS_REGION})
+            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
             
-            mkdir -p ~/.docker
-            echo '{\"auths\": {\"${ECR_REGISTRY}\": {\"auth\": \"'\$(echo -n AWS:\$TOKEN | base64)'\"}}}' > ~/.docker/config.json
+            export ECR_REGISTRY=${ECR_REGISTRY}
+            export IMAGE_TAG=${{ github.sha }}
             
-            kubectl delete secret regcred -n todo-app --ignore-not-found
-            kubectl create secret generic regcred \
-              --from-file=.dockerconfigjson=/home/ubuntu/.docker/config.json \
-              --type=kubernetes.io/dockerconfigjson \
-              -n todo-app
+            docker-compose down
             
-            kubectl apply -f ~/deployment.yaml
+            docker-compose up -d
+
+            docker-compose ps
             
-            kubectl set image deployment/todo-app todo-app=${ECR_REGISTRY}/${ECR_REPOSITORY}:latest -n todo-app
-            
-            kubectl rollout status deployment/todo-app -n todo-app --timeout=90s
-            
-            kubectl get pods -n todo-app
+            docker-compose logs
           "

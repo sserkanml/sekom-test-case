@@ -2,13 +2,13 @@ version: '3.8'
 
 services:
   web:
-    build: .
+    image: ${ECR_REGISTRY}/todo-app:${IMAGE_TAG:-latest}
     command: >
       flask run --host=0.0.0.0
     volumes:
       - .:/app
     ports:
-      - "5001:5000"
+      - "80:5000"
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
