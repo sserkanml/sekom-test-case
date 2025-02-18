@@ -206,11 +206,11 @@ jobs:
             export ECR_REGISTRY=${ECR_REGISTRY}
             export IMAGE_TAG=${{ github.sha }}
             
-            docker-compose down
+            docker compose down
             
-            docker-compose up -d
+            docker compose up -d
 
-            docker-compose ps
+            docker compose ps
             
-            docker-compose logs
+            docker compose logs
           "
