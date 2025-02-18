@@ -204,7 +204,7 @@ jobs:
             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
             
             export ECR_REGISTRY=${ECR_REGISTRY}
-            export IMAGE_TAG=${{ github.sha }}
+            export IMAGE_TAG=latest
             
             docker compose down
             
